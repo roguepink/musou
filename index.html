@@ -42,11 +42,11 @@
     padding: 10px 14px; text-align: left; max-width: 340px; }
   .rules b { color: #ffd34d; }
   .rules .blue { color: #7fd8ff; } .rules .red { color: #ff7b6b; }
-  button { font: inherit; font-weight: 900; font-size: 22px; padding: 14px 40px; border: 3px solid #3a1408; border-radius: 14px;
+  .overlay button, #ctl button { font: inherit; font-weight: 900; font-size: 22px; padding: 14px 40px; border: 3px solid #3a1408; border-radius: 14px;
     background: linear-gradient(#ffdf6a, #f0a830); color: #3a1408; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
     box-shadow: 0 5px 0 #8a4a10; min-width: 220px; }
-  button:active { transform: translateY(3px); box-shadow: 0 2px 0 #8a4a10; }
-  button.sub { font-size: 16px; padding: 10px 24px; background: rgba(255,255,255,.12); color: #fff; border-color: rgba(255,255,255,.35); box-shadow: none; min-width: 0; }
+  .overlay button:active { transform: translateY(3px); box-shadow: 0 2px 0 #8a4a10; }
+  .overlay button.sub { font-size: 16px; padding: 10px 24px; background: rgba(255,255,255,.12); color: #fff; border-color: rgba(255,255,255,.35); box-shadow: none; min-width: 0; }
   #ctl { position: fixed; top: calc(env(safe-area-inset-top) + 6px); right: 8px; display: flex; gap: 6px; z-index: 4; }
   #ctl button { min-width: 0; width: 40px; height: 34px; padding: 0; font-size: 17px; border-radius: 10px; border: 2px solid rgba(255,255,255,.35);
     background: rgba(20,10,8,.55); color: #fff; box-shadow: none; }
