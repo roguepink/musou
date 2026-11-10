@@ -946,7 +946,7 @@ function drawHUD() {
   ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
   pill(8, y, 74, 28); ctx.font = '900 16px ' + JF; ctx.textAlign = 'center'; ctx.fillStyle = '#ffd34d'; ctx.fillText('第' + G.stage + '陣', 45, y + 14);
   // 進み具合
-  var px = 90, pw = 100, p = clamp(G.dist / G.bossAt, 0, 1);
+  var px = 90, pw = 78, p = clamp(G.dist / G.bossAt, 0, 1);
   pill(px, y + 8, pw, 12); ctx.fillStyle = '#ffd34d'; rrect(ctx, px + 2, y + 10, (pw - 4) * p, 8, 4); ctx.fill();
   if (BOSSES[(G.stage - 1) % BOSSES.length].e) emo(BOSSES[(G.stage - 1) % BOSSES.length].e, px + pw + 2, y + 14, 22);
   else ctx.drawImage(SPR.shogun[0], px + pw - 10, y + 2, 24, 24);
