@@ -21,36 +21,43 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <style>
+  @font-face { font-family: 'Yuji'; src: url('fonts/yuji.woff') format('woff'); font-display: swap; }
+  @font-face { font-family: 'Dela'; src: url('fonts/dela.woff') format('woff'); font-display: swap; }
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #120a0a; color: #fff;
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0a0404; color: #fff;
     font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", "Noto Sans JP", system-ui, sans-serif;
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   canvas { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; }
   #safe { position: fixed; left: 0; top: 0; width: 0; height: 0; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); visibility: hidden; pointer-events: none; }
   .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 14px; text-align: center; padding: calc(env(safe-area-inset-top) + 16px) 22px calc(env(safe-area-inset-bottom) + 16px);
-    background: radial-gradient(ellipse at 50% 40%, rgba(40,14,10,.55), rgba(10,5,4,.88)); z-index: 5; overflow-y: auto; }
+    background: radial-gradient(ellipse at 50% 45%, rgba(30,6,4,.35), rgba(6,2,2,.9)); z-index: 5; overflow-y: auto; }
+  #title { background: linear-gradient(rgba(6,2,2,.15), rgba(6,2,2,.1) 40%, rgba(6,2,2,.85)); justify-content: flex-end; padding-bottom: calc(env(safe-area-inset-bottom) + 34px); }
   .overlay.hidden, .hidden { display: none !important; }
-  h1 { margin: 0; font-size: clamp(46px, 15vw, 72px); font-weight: 900; line-height: 1.1; letter-spacing: .06em;
-    color: #fff4dc; text-shadow: 0 4px 0 #8a1a10, 0 0 24px rgba(255,90,40,.5); }
-  h1 small { display: block; font-size: .28em; letter-spacing: .1em; color: #ffd34d; text-shadow: 0 2px 0 #3a1408; margin-top: 8px; }
-  h2 { margin: 0; font-size: clamp(30px, 9vw, 44px); font-weight: 900; color: #ffd34d; text-shadow: 0 3px 0 #6a1408; }
-  p { margin: 0; line-height: 1.7; }
-  p b { color: #ffd34d; font-size: 1.15em; }
-  .rules { font-size: 15px; line-height: 1.75; background: rgba(255,240,220,.08); border: 1px solid rgba(255,211,77,.3); border-radius: 14px;
+  .logo { position: relative; margin-bottom: auto; margin-top: 8vh; }
+  .logo h1 { margin: 0; font-family: 'Yuji', serif; font-weight: 400; font-size: clamp(76px, 25vw, 120px); line-height: 1; letter-spacing: .02em;
+    color: #fff6e6; text-shadow: 0 0 2px #000, 0 6px 0 #6a0a06, 0 0 30px rgba(255,70,30,.55); }
+  .logo .seal { position: absolute; right: -14px; bottom: -10px; width: 44px; height: 44px; border: 3px solid #e8352a; border-radius: 6px; color: #e8352a;
+    font-family: 'Yuji', serif; font-size: 15px; line-height: 17px; display: flex; align-items: center; justify-content: center; transform: rotate(8deg);
+    background: rgba(255,240,230,.08); writing-mode: vertical-rl; }
+  .logo p { margin: 10px 0 0; font-family: 'Dela', sans-serif; letter-spacing: .25em; font-size: 14px; color: #ffd34d; text-shadow: 0 2px 0 #000; }
+  h2 { margin: 0; font-family: 'Yuji', serif; font-weight: 400; font-size: clamp(40px, 12vw, 58px); color: #ffd34d; text-shadow: 0 4px 0 #4a0806, 0 0 20px rgba(255,90,40,.5); }
+  #over h2 { color: #ff5a4a; }
+  p { margin: 0; line-height: 1.8; }
+  p b { color: #ffd34d; font-family: 'Dela', sans-serif; font-weight: 400; font-size: 1.15em; }
+  .rules { font-size: 13.5px; line-height: 1.75; background: rgba(10,4,2,.6); border: 1px solid rgba(255,211,77,.35); border-radius: 12px;
     padding: 10px 14px; text-align: left; max-width: 340px; }
-  .rules b { color: #ffd34d; }
-  .rules .blue { color: #7fd8ff; } .rules .red { color: #ff7b6b; }
-  .overlay button, #ctl button { font: inherit; font-weight: 900; font-size: 22px; padding: 14px 40px; border: 3px solid #3a1408; border-radius: 14px;
-    background: linear-gradient(#ffdf6a, #f0a830); color: #3a1408; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
-    box-shadow: 0 5px 0 #8a4a10; min-width: 220px; }
-  .overlay button:active { transform: translateY(3px); box-shadow: 0 2px 0 #8a4a10; }
-  .overlay button.sub { font-size: 16px; padding: 10px 24px; background: rgba(255,255,255,.12); color: #fff; border-color: rgba(255,255,255,.35); box-shadow: none; min-width: 0; }
+  .rules b { color: #ffd34d; } .rules .blue { color: #8fe0ff; } .rules .red { color: #ff7b6b; } .rules .gold { color: #ffc75a; }
+  .overlay button { font: inherit; font-family: 'Yuji', serif; font-weight: 400; font-size: 30px; padding: 10px 46px 12px; border: 2px solid #ffd34d; border-radius: 8px;
+    background: linear-gradient(#b8221a, #6a0c08); color: #fff4dc; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 0 0 4px rgba(0,0,0,.5), 0 6px 18px rgba(255,60,30,.35); min-width: 230px; text-shadow: 0 2px 0 #3a0402; }
+  .overlay button:active { transform: translateY(2px); }
+  .overlay button.sub { font-family: inherit; font-weight: 800; font-size: 15px; padding: 9px 22px; background: rgba(255,255,255,.08); color: #eee; border-color: rgba(255,255,255,.35); box-shadow: none; min-width: 0; text-shadow: none; }
   #ctl { position: fixed; top: calc(env(safe-area-inset-top) + 6px); right: 8px; display: flex; gap: 6px; z-index: 4; }
-  #ctl button { min-width: 0; width: 40px; height: 34px; padding: 0; font-size: 17px; border-radius: 10px; border: 2px solid rgba(255,255,255,.35);
-    background: rgba(20,10,8,.55); color: #fff; box-shadow: none; }
-  #bestLine { font-size: 13px; color: #d9c8b0; }
+  #ctl button { min-width: 0; width: 40px; height: 34px; padding: 0; font-size: 17px; border-radius: 8px; border: 1.5px solid rgba(255,211,77,.6);
+    background: rgba(20,6,4,.7); color: #fff; cursor: pointer; }
+  #bestLine { font-size: 12px; color: #d9c8b0; }
 </style>
 </head>
 <body>
@@ -59,30 +66,29 @@
 <div id="ctl" class="hidden"><button id="btnMute" type="button" aria-label="音">🔊</button><button id="btnPause" type="button" aria-label="一時停止">⏸</button></div>
 
 <div id="title" class="overlay">
-  <h1>侍無双<small>〜 門をくぐって 大軍勢 〜</small></h1>
+  <div class="logo"><h1>侍無双</h1><div class="seal">無双</div><p>押し寄せる大軍を なぎ倒せ</p></div>
   <div class="rules">
     <b>指で左右に動かすだけ。</b>仲間は自動で撃つ。<br>
-    <span class="blue">青い門</span>で仲間が増える。<span class="red">赤い門</span>は減る。<br>
-    <b>門を撃つと数字が上がる!</b>赤も青に変えられる。<br>
-    <b>木箱</b>を壊すと 武器・援軍・攻撃力アップ。<br>
-    最後に出てくる<b>大将</b>を倒せば 突破。赤い丸はよけろ!
+    <span class="blue">青い門</span>で仲間が増え、<span class="red">赤い門</span>で減る。門を撃つと数字が上がる。<br>
+    <span class="gold">金の門</span>は武器。爆竹・花火・雷・妖刀など13種類。<br>
+    赤く光る場所は攻撃の合図。すぐによけろ!
   </div>
-  <button id="btnPlay" type="button">出陣!</button>
-  <button id="btnFirst" class="sub hidden" type="button">第1陣から</button>
+  <button id="btnPlay" type="button">出陣</button>
+  <button id="btnFirst" class="sub hidden" type="button">第一陣から</button>
   <p id="bestLine"></p>
 </div>
 
 <div id="over" class="overlay hidden">
-  <h2 id="overText">討死…</h2>
+  <h2 id="overText">討死</h2>
   <p id="overScore"></p>
-  <button id="btnRetry" type="button">もう一度</button>
+  <button id="btnRetry" type="button">もう一度 挑む</button>
   <button id="btnTitle" class="sub" type="button">タイトルへ</button>
 </div>
 
 <div id="clear" class="overlay hidden">
-  <h2 id="clearText">突破!</h2>
+  <h2 id="clearText">突破</h2>
   <p id="clearScore"></p>
-  <button id="btnNext" type="button">次の陣へ ▶</button>
+  <button id="btnNext" type="button">次の陣へ</button>
   <button id="btnTitle2" class="sub" type="button">タイトルへ</button>
 </div>
 
@@ -92,6 +98,8 @@
   <button id="btnQuit" class="sub" type="button">タイトルへ</button>
 </div>
 
+<script src="art.js"></script>
+<script src="audio.js"></script>
 <script src="game.js"></script>
 <script>
 // LINE の中で開いたときだけ、1回だけ案内する(LINE の中は画面が小さく、ホーム画面にも入れられない)
@@ -116,9 +124,9 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
 <script>
   // はじめの画面(Google Play 風: インストール / このまま遊ぶ)。install.js が出す。ホーム画面から開いたときは出ない
   window.INSTALL_GATE = { id: 'musou', name: '侍無双', icon: 'icon-192.png', color: '#c8382c',
-    tagline: '門をくぐって 仲間が増える 合戦アクション',
-    desc: '指で左右に動かすだけ。青い門をくぐると仲間が増え、赤い門だと減る。門を撃てば数字が上がる!侍と忍者の大軍で、鬼・天狗・がしゃどくろ、そして大将をなぎ倒せ。',
-    points: ['門をくぐるたびに 仲間がどんどん増える', '弓矢・手裏剣・火縄銃・焙烙玉など 武器は6種類', '桜街道・竹林・夜の城下町… 大将は10体'],
+    tagline: '押し寄せる大軍を なぎ倒す 合戦アクション',
+    desc: '奥から押し寄せる敵の大軍を、門で仲間を増やして なぎ倒す合戦アクション。指で左右に動かすだけ。爆竹・花火・雷・妖刀など13種類の武器、騎馬隊の突撃や矢の雨、そして巨大な大将が迫ってくる。',
+    points: ['3列の門で 仲間が何百人にも増える', '武器は13種類。爆竹・花火・雷・鎖鎌・妖刀…', '赤鬼・がしゃどくろ・八岐大蛇など 巨大な大将6体'],
     shots: ['shots/1.jpg', 'shots/2.jpg', 'shots/3.jpg', 'shots/4.jpg', 'shots/5.jpg'], badges: ['無料', '広告なし', '登録なし', 'スマホは縦向き'], playLabel: '▶ このまま遊ぶ' };
 </script>
 <script src="install.js"></script>
