@@ -143,6 +143,7 @@ for (var fi = 0; fi < MAXSHOW; fi++) {
 var G = {
   state: 'title', paused: false, t: 0, stage: 1, n: 10, nShow: 10, sx: 0, tx: 0, dist: 0, speed: 120,
   main: 'yumi', mainLv: 1, spec: {}, specT: {}, power: 1, fireT: 0, score: 0, kills: 0, stageKills: 0, maxN: 10, milestone: 0,
+  allies: [], rec: 0, recShow: 0, recT: 0, gainJ: 0, gainR: 0,
   bullets: [], enemies: [], gates: [], props: [], fx: [], texts: [], ebul: [], warns: [], fumas: [], waves: [], queue: [], amb: [],
   boss: null, events: [], evi: 0, bossAt: 1, clearT: 0, overT: 0, shake: 0, flash: 0, slow: 0, theme: 0, rushT: 0,
   banner: null, nFlash: 0, nFlashCol: '#fff', danger: 0, dmgAcc: 0, dpsAvg: 0, dpsT: 0, lossE: 0, lossB: 0,
@@ -165,9 +166,9 @@ function squadR() { return 7.4 * Math.sqrt(Math.max(1, Math.min(G.nShow, MAXSHOW
 function buildStage(s) {
   seed = (s * 7919 + 101) >>> 0;
   var plan;
-  if (s === 1) plan = ['G', 'W', 'X', 'W', 'G', 'K', 'R', 'X', 'W', 'A', 'G', 'L', 'X', 'R'];
+  if (s === 1) plan = ['G', 'W', 'J', 'X', 'W', 'G', 'K', 'R', 'J', 'X', 'W', 'A', 'G', 'L', 'J', 'X', 'R'];
   else {
-    plan = ['G', 'W', 'X', 'W', 'G', 'K', 'R', 'X', 'A', 'W', 'G', 'L', 'X', 'R'];
+    plan = ['G', 'W', 'J', 'X', 'W', 'G', 'K', 'R', 'J', 'X', 'A', 'W', 'G', 'L', 'J', 'X', 'R'];
     if (s >= 3) plan.splice(9, 0, 'K');
     if (s >= 4) plan.splice(5, 0, 'W');
     if (s >= 6) plan.splice(12, 0, 'A');
@@ -176,7 +177,7 @@ function buildStage(s) {
   var ev = [], at = 160;
   for (var k = 0; k < plan.length; k++) {
     ev.push({ at: at, type: plan[k], p: k / (plan.length - 1), first: k === 0 });
-    at += k === 0 ? 760 : plan[k] === 'R' ? 760 : plan[k] === 'W' ? 600 : 520;
+    at += k === 0 ? 760 : plan[k] === 'R' ? 760 : plan[k] === 'W' ? 600 : plan[k] === 'J' ? 400 : 520;
   }
   G.events = ev; G.evi = 0; G.bossAt = at + 200;
 }
@@ -185,7 +186,7 @@ function startStage(s) {
   G.n = n0(s); G.nShow = G.n; G.maxN = G.n; G.sx = G.tx = 0; G.dist = 0; G.main = 'yumi'; G.mainLv = 1; G.spec = {}; G.specT = {}; G.power = 1; G.fireT = 0;
   G.bullets = []; G.enemies = []; G.gates = []; G.props = []; G.fx = []; G.texts = []; G.ebul = []; G.warns = []; G.fumas = []; G.waves = []; G.queue = []; G.amb = [];
   G.boss = null; G.clearT = 0; G.overT = 0; G.shake = 0; G.flash = 0; G.slow = 0; G.stageKills = 0; G.milestone = 0; G.danger = 0; G.rushT = 0;
-  G.dmgAcc = 0; G.dpsAvg = expDPS(s, 0); G.dpsT = 0; G.lossE = 0; G.lossB = 0;
+  G.dmgAcc = 0; G.dpsAvg = expDPS(s, 0); G.dpsT = 0; G.lossE = 0; G.lossB = 0; G.allies = []; G.rec = 0; G.recShow = 0; G.recT = 0; G.gainJ = 0; G.gainR = 0;
   buildStage(s);
   G.banner = { big: '第' + kan(s) + '陣', small: THEMES[G.theme].name, t: 2.6, col: '#ffd34d' };
   setMusic('battle');
@@ -201,18 +202,19 @@ function spawnEvent(e) {
     case 'K': spawnCavalry(e); break;
     case 'A': spawnArchers(e); break;
     case 'L': spawnLog(e); break;
+    case 'J': spawnAllies(e); break;
   }
 }
 function numGate(op, v) { return { kind: 'num', op: op, v: v, charge: 0, flash: 0 }; }
 function spawnNumGates(e) {
   var s = G.stage, p = e.p, base = expN(s, p);
-  var good = Math.max(4, nice(base * rr(0.5, 0.9))), good2 = Math.max(3, nice(base * rr(0.25, 0.45)));
+  var good = Math.max(5, nice(base * rr(0.65, 1.05))), good2 = Math.max(3, nice(base * rr(0.25, 0.45)));
   var bad = Math.max(3, nice(base * rr(0.3, 0.6))), bad2 = Math.max(2, nice(base * rr(0.15, 0.3)));
   var list, r = rnd();
   if (e.first) list = [numGate('add', nice(base * 1.4)), numGate('add', -bad), numGate('add', good2)];
   else if (r < 0.3) list = [numGate('add', good), numGate('mul', 1), numGate('add', -bad)];
   else if (r < 0.5) list = [numGate('add', -bad), numGate('add', good), numGate('mul', -1)];
-  else if (r < 0.7) list = [numGate('mul', p > 0.55 && rnd() < 0.4 ? 2 : 1), numGate('add', -bad), numGate('add', good2)];
+  else if (r < 0.7) list = [numGate('mul', p > 0.4 && rnd() < 0.5 ? 2 : 1), numGate('add', -bad), numGate('add', good2)];
   else if (r < 0.86) list = [numGate('add', -bad), numGate('add', -bad2), numGate('add', good)];
   else list = [numGate('mul', -1), numGate('add', -bad2), numGate('mul', 1)];
   addGateRow(shuffle(list), base);
@@ -367,7 +369,9 @@ function update(dt) {
 
   if (G.n > 0 && G.overT <= 0 && G.clearT <= 0) { fire(dt); specials(dt); }
   updBullets(dt); updGates(dt); updProps(dt); updEnemies(dt); updBoss(dt); updEbul(dt); updWarns(dt); updFuma(dt);
-  updFx(dt);
+  updAllies(dt); updFx(dt);
+  G.recT -= dt;
+  if (G.recT <= 0 && G.recShow > 0) { addText('降参兵 +' + G.recShow, G.sx + 40, 80, '#9dffb8', 18); G.gainR += G.recShow; G.recShow = 0; G.recT = 1.3; }
   // 1秒あたりの攻撃の強さを はかる(大将の体力を決めるのに使う)
   G.dpsT += dt; if (G.dpsT >= 1) { G.dpsAvg = G.dpsAvg * 0.8 + (G.dmgAcc / G.dpsT) * 0.2; G.dmgAcc = 0; G.dpsT = 0; }
   if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 30);
@@ -492,7 +496,10 @@ function hurtEnemy(e, dmg, kb) {
 }
 function killEnemy(e, byShot) {
   e.hp = 0; e.dead = true;
-  if (byShot) { G.score += Math.round(e.sc * (1 + G.stage * 0.2)); G.kills++; G.stageKills++; }
+  if (byShot) {
+    G.score += Math.round(e.sc * (1 + G.stage * 0.2)); G.kills++; G.stageKills++;
+    if (G.n > 0 && G.clearT <= 0) { G.rec += e.T.big ? 6 : 1; while (G.rec >= 6) { G.rec -= 6; G.n++; G.recShow++; } }   // 倒すと 降参兵が仲間に
+  }
   var big = e.T.big || e.type === 'kiba';
   if (G.fx.length < 420) {
     fx('ink', e.x, e.z, 6, 0, 0, 0, 0.6, '#5a0a0a', big ? 70 : 34);
@@ -666,6 +673,46 @@ function updGates(dt) {
     }
     if (row.passed) { row.fade -= dt * 2.4; if (row.fade <= 0) G.gates.splice(i, 1); }
   }
+}
+/* ---- 加勢の兵(道ばたで待っている味方。その列を通ると合流) ---- */
+function spawnAllies(e) {
+  var s = G.stage, n = Math.max(10, nice(expN(s, e.p) * rr(0.6, 0.9)));
+  G.allies.push({ z: SPAWN, lane: Math.floor(rnd() * 3), n: n, taken: false, fade: 1 });
+}
+function updAllies(dt) {
+  var sp = worldSpeed();
+  for (var i = G.allies.length - 1; i >= 0; i--) {
+    var a = G.allies[i]; a.z -= sp * dt;
+    if (!a.taken && a.z <= 4) {
+      a.taken = true;
+      if (G.n > 0 && laneOf(G.sx) === a.lane) {
+        a.got = true; G.n = Math.min(99999, G.n + a.n); G.gainJ += a.n;
+        addText('加勢 +' + fmt(a.n), G.sx, 150, '#9dffb8', 32); G.nFlash = 0.5; G.nFlashCol = '#9dffb8'; sfx('good');
+        for (var q = 0; q < 16; q++) fx('spark', laneX(a.lane) + rr2(40), rr2(20), 10, rr2(40), rr2(20), 120 + Math.random() * 100, 0.8, '#c8ffd0', 8);
+      }
+    }
+    if (a.taken) { a.fade -= dt * (a.got ? 4 : 1.5); if (a.fade <= 0) G.allies.splice(i, 1); }
+  }
+}
+function drawAllies(a) {
+  var z = a.z; if (z < -D0 + 60) return;
+  var s = sOf(z), x = px(laneX(a.lane), z), y = py(z), al = Math.max(0, a.fade) * fogA(z);
+  ctx.globalAlpha = al;
+  ctx.fillStyle = 'rgba(120,255,160,.22)'; groundEllipse(laneX(a.lane), z, 46); ctx.fill();
+  ctx.strokeStyle = 'rgba(150,255,180,.8)'; ctx.lineWidth = 2 * s + 0.5; groundEllipse(laneX(a.lane), z, 46); ctx.stroke();
+  var m = Math.min(12, 4 + Math.floor(a.n / 10));
+  for (var i = 0; i < m; i++) {
+    var u = FORM[i], ux = laneX(a.lane) + u.x * 0.9, uz = z + u.z * 0.9, us = sOf(uz), sp = art('unit', u.k, Math.sin(G.t * 6 + i) > 0 ? 0 : 1), sz = 46 * us;
+    if (sp) ctx.drawImage(sp, px(ux, uz) - sz / 2, py(uz) - sz * 0.96, sz, sz);
+  }
+  // のぼりと数
+  var by = y - 74 * s, txt = '加勢 +' + fmt(a.n);
+  ctx.font = Math.max(8, 20 * s) + 'px ' + NUMF; var tw = ctx.measureText(txt).width + 16 * s;
+  ctx.fillStyle = '#1a0a06'; ctx.fillRect(x - 1, by, 2, 30 * s);
+  rrect(ctx, x - tw / 2, by - 14 * s, tw, 26 * s, 5 * s);
+  ctx.fillStyle = 'rgba(10,60,30,.88)'; ctx.fill(); ctx.strokeStyle = '#9dffb8'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#e8ffe8'; ctx.fillText(txt, x, by - 1 * s);
+  ctx.globalAlpha = 1;
 }
 function breakProp(pr) {
   pr.dead = true; pr.fade = 1; sfx('crate'); G.shake = Math.max(G.shake, 6);
@@ -922,6 +969,8 @@ function bot() {
     var best = 1, bv = -1;
     row.list.forEach(function (g, li) { var v = g.kind === 'wpn' ? G.n * 2.2 : gateResult(g, G.n); if (v > bv) { bv = v; best = li; } });
     tgt = laneX(best);
+  } else if ((G.allies || []).some(function (a) { return !a.taken && a.z < 700; })) {
+    G.allies.forEach(function (a) { if (!a.taken && a.z < 700) tgt = laneX(a.lane); });
   } else {
     var sx = 0, cnt = 0;
     G.enemies.forEach(function (e) { if (e.z > 0 && e.z < 600) { sx += e.x; cnt++; } });
@@ -1155,6 +1204,7 @@ function drawWorld() {
   for (i = 0; i < m; i++) DL.push({ z: FORM[i].z, t: 0, o: i });
   for (i = 0; i < G.gates.length; i++) DL.push({ z: G.gates[i].z, t: 3, o: G.gates[i] });
   for (i = 0; i < G.props.length; i++) DL.push({ z: G.props[i].z, t: 4, o: G.props[i] });
+  for (i = 0; i < (G.allies || []).length; i++) DL.push({ z: G.allies[i].z, t: 5, o: G.allies[i] });
   if (G.boss) DL.push({ z: G.boss.z, t: 2, o: G.boss });
   DL.sort(function (a, b) { return b.z - a.z; });
   var sxw = G.state === 'title' ? Math.sin(G.t * 0.6) * 40 : G.sx;
@@ -1164,7 +1214,8 @@ function drawWorld() {
     else if (d.t === 1) drawEnemy(d.o);
     else if (d.t === 2) drawBoss(d.o);
     else if (d.t === 3) drawGateRow(d.o);
-    else drawProp(d.o);
+    else if (d.t === 4) drawProp(d.o);
+    else drawAllies(d.o);
   }
 }
 function drawUnit(i, sxw) {
