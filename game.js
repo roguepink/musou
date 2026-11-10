@@ -13,7 +13,7 @@ var ROAD = 172, LANE = ROAD * 2 / 3, KX = 1.07, D0 = 320, SPAWN = 1650;
 var JF = '"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo","Noto Sans JP",system-ui,sans-serif';
 var NUMF = 'Dela,' + JF, BRUSH = 'Yuji,' + JF, UIF = '800 '; // UIF + '14px ' + JF = 小さい字(ふつうの太字)
 var SAVE_KEY = 'musou-save-v2';
-var MAXSHOW = 150, MAX_SHOOT = 16;
+var MAXSHOW = 150, MAX_SHOOT = 16, VISMAX = 900;   // MAXSHOW = 当たり判定に使う前のかたまり / VISMAX = 画面に描く兵の数の上限
 
 /* ---------------- 保存 ---------------- */
 var SAVE = { stage: 1, best: 0, bestStage: 0, mute: false };
@@ -136,10 +136,23 @@ var THEMES = [
 
 /* ---------------- 仲間の並び ---------------- */
 var FORM = [];
-for (var fi = 0; fi < MAXSHOW; fi++) {
+for (var fi = 0; fi < MAXSHOW; fi++) {      // 前のかたまり(ひまわりの種の並び)
   var fr = 7.4 * Math.sqrt(fi + 0.35), fa = fi * 2.39996;
   FORM.push({ x: Math.cos(fa) * fr, z: Math.sin(fa) * fr * 0.8, k: fi % 4 === 3 ? 'nin' : 'sam', ph: Math.random() * 6.283 });
 }
+(function () {      // 増えた兵は、かたまりのまわり(後ろと横)の マス目に、近い所から順に ぎっしり並ぶ(画面の下まで)
+  var R0 = 7.4 * Math.sqrt(MAXSHOW) + 2, pts = [];
+  for (var z = -124; z <= R0 * 0.6; z += 9) {
+    for (var x = -(ROAD + 66); x <= ROAD + 66; x += 12) {
+      var jx = x + (Math.round(z / 9) % 2 ? 6 : 0) + (hash(x, z) - 0.5) * 4, jz = z + (hash(z, x) - 0.5) * 3;
+      if (jx * jx / (R0 * R0) + jz * jz / (R0 * 0.8 * R0 * 0.8) < 1) continue;     // 前のかたまりの中は空ける
+      pts.push({ x: jx, z: jz, d: Math.sqrt(jx * jx / 2.1 + (jz + 10) * (jz + 10) / 0.45) });
+    }
+  }
+  pts.sort(function (a, b) { return a.d - b.d; });
+  for (var i = 0; i < pts.length && FORM.length < VISMAX; i++) FORM.push({ x: pts[i].x, z: pts[i].z, k: FORM.length % 4 === 3 ? 'nin' : 'sam', ph: Math.random() * 6.283 });
+})();
+var visMax = VISMAX;       // 重いスマホでは 自動で減らす
 
 /* ---------------- 状態 ---------------- */
 var G = {
@@ -380,7 +393,7 @@ function update(dt) {
   if (keys.r) G.tx += 300 * dt;
   G.tx = clamp(G.tx, -ROAD + 12, ROAD - 12);
   G.sx += (G.tx - G.sx) * Math.min(1, dt * 13);
-  var target = Math.min(G.n, MAXSHOW);
+  var target = Math.min(G.n, visMax, FORM.length);
   if (G.nShow < target) G.nShow = Math.min(target, G.nShow + Math.max(4, (target - G.nShow) * 6) * dt); else G.nShow = target;
   G.dist += worldSpeed() * dt;
 
@@ -433,7 +446,7 @@ function fire(dt) {
 }
 function volley(w) {
   if (G.bullets.length > 340) return;
-  var m = Math.max(1, Math.floor(G.nShow)), S = Math.max(1, Math.min(G.n, m, w.shoot));
+  var m = Math.max(1, Math.min(MAXSHOW, Math.floor(G.nShow))), S = Math.max(1, Math.min(G.n, m, w.shoot));
   var dmg = w.dmg * LVMUL[G.mainLv] * G.power * G.n / S;
   for (var j = 0; j < S; j++) {
     var u = FORM[Math.min(m - 1, Math.floor((j + Math.random()) * m / S))];
@@ -1247,7 +1260,8 @@ function drawWorld() {
 }
 function drawUnit(i, sxw) {
   var u = FORM[i], z = u.z, s = sOf(z), x = px(sxw + u.x, z), y = py(z);
-  var ph = Math.sin(G.t * 11 + u.ph), sp = art('unit', u.k, ph > 0 ? 0 : 1), sz = 46 * s;
+  var sz = 46 * s; if (x < -sz || x > W + sz || y - sz > H) return;
+  var ph = Math.sin(G.t * 11 + u.ph), sp = art('unit', u.k, ph > 0 ? 0 : 1);
   if (sp) ctx.drawImage(sp, x - sz / 2, y - sz * 0.96 + ph * 1.2 * s, sz, sz);
   else { ctx.fillStyle = u.k === 'nin' ? '#222' : '#2f62d8'; ctx.beginPath(); ctx.arc(x, y - 12 * s, 8 * s, 0, 6.283); ctx.fill(); }
 }
@@ -1645,11 +1659,13 @@ document.addEventListener('visibilitychange', function () {
 });
 
 /* ---------------- ループ ---------------- */
-var last = 0, acc = 0;
+var last = 0, acc = 0, fps = { ema: 1 / 60, t: 0 };
 function loop(now) {
   requestAnimationFrame(loop);
   try {
-    var dt = Math.min((now - last) / 1000, 0.05); last = now;
+    var raw = (now - last) / 1000, dt = Math.min(raw, 0.05); last = now;
+    if (raw > 0 && raw < 0.5) { fps.ema = fps.ema * 0.95 + raw * 0.05; fps.t += raw;
+      if (fps.t > 1) { fps.t = 0; if (fps.ema > 0.024 && visMax > 250) visMax -= 60; else if (fps.ema < 0.018 && visMax < VISMAX) visMax += 20; } }   // カクついたら 描く兵を減らす
     if (G.state === 'play' && !G.paused) {
       var ts = G.timeScale;
       if (G.slow > 0) { G.slow -= dt; ts *= 0.3; }
