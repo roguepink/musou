@@ -95,7 +95,8 @@ var SPEC = {
 };
 var SPEC_KEYS = ['bakuchiku', 'horoku', 'hanabi', 'kaminari', 'fuma', 'yoto', 'kusarigama'];
 function wname(k) { return MAIN[k] ? MAIN[k].name : SPEC[k].name; }
-var LVMUL = [1, 1, 1.35, 1.75];
+var LVMUL = [1, 1, 1.35, 1.75, 2.2, 2.7];
+function maxLv() { return 3 + (G.stage >= 10 ? 1 : 0) + (G.stage >= 14 ? 1 : 0); }   // 第十陣から Lv4、第十四陣から Lv5 まで
 
 // 敵(hb = ふつうの1発で 何発ぶんの強さか)
 var ET = {
@@ -111,7 +112,7 @@ var ET = {
   aooni:    { name: '青鬼',     px: 100, r: 21, hb: 30,  spd: 24,  pow: 8, sc: 120, steer: 26, big: 1 }
 };
 var BOSSES = [
-  { k: 'akaoni',      n: '赤鬼',         atk: ['slam', 'sweep', 'summon', 'charge'], minion: ['oni', 'ashigaru', 'ashigaru'] },
+  { k: 'akaoni',      n: '赤鬼',         atk: ['slam', 'sweep', 'summon', 'charge'], minion: ['ashigaru', 'ashigaru', 'ninja', 'oni'] },
   { k: 'gashadokuro', n: 'がしゃどくろ', atk: ['slam', 'rain', 'summon', 'sweep'],   minion: ['gaikotsu', 'gaikotsu', 'yurei'] },
   { k: 'tsuchigumo',  n: '土蜘蛛',       atk: ['rain', 'charge', 'summon', 'sweep'], minion: ['ninja', 'ninja', 'ashigaru'] },
   { k: 'orochi',      n: '八岐大蛇',     atk: ['breath', 'rain', 'sweep', 'summon'], minion: ['yurei', 'gaikotsu', 'oni'] },
@@ -152,7 +153,7 @@ var G = {
 };
 function n0(s) { return Math.min(30, 10 + 2 * (s - 1)); }
 function D(s) { return 1 + 0.08 * (s - 1); }
-function GK(s) { return 1 + Math.min(1.6, Math.max(0, s - 4) * 0.1); }   // 第五陣から 増える量・減る量を少しずつ大きく(人数の上下を はげしく)
+function GK(s) { return 1 + Math.min(3.0, Math.max(0, s - 4) * 0.1); }   // 第五陣から 増える量・減る量を少しずつ大きく(人数の上下を はげしく)
 function expN(s, p) { var a = n0(s), e = 220 * (1 + 0.12 * (s - 1)); return a * Math.pow(e / a, p); }
 function unitDps(p) { return 3 + 3 * p; }
 function expDPS(s, p) { return expN(s, p) * unitDps(p); }
@@ -178,6 +179,10 @@ function buildStage(s) {
     if (s >= 6) plan.splice(12, 0, 'A');
     if (s >= 7) plan.splice(6, 0, 'J');
     if (s >= 10) plan.splice(13, 0, 'G');
+    if (s >= 8) plan.splice(4, 0, 'X');      // 先の陣ほど 武器の門を増やす
+    if (s >= 12) plan.splice(11, 0, 'X');
+    if (s >= 16) plan.splice(16, 0, 'X');
+    if (s >= 13) plan.splice(8, 0, 'J');
     if (rnd() < 0.5) { var t = plan[3]; plan[3] = plan[9]; plan[9] = t; }
   }
   var ev = [], at = 160;
@@ -190,13 +195,23 @@ function buildStage(s) {
 function startStage(s) {
   G.stage = s; G.theme = (s - 1) % THEMES.length; skyFor = -1;
   G.n = n0(s); G.nShow = G.n; G.maxN = G.n; G.sx = G.tx = 0; G.dist = 0; G.main = 'yumi'; G.mainLv = 1; G.spec = {}; G.specT = {}; G.power = 1; G.fireT = 0;
+  startKit(s);
   G.bullets = []; G.enemies = []; G.gates = []; G.props = []; G.fx = []; G.texts = []; G.ebul = []; G.warns = []; G.fumas = []; G.waves = []; G.queue = []; G.amb = [];
   G.startScore = G.score; G.startKills = G.kills;     // やり直したときは ここから続く
   G.boss = null; G.clearT = 0; G.overT = 0; G.shake = 0; G.flash = 0; G.slow = 0; G.stageKills = 0; G.milestone = 0; G.danger = 0; G.rushT = 0;
   G.dmgAcc = 0; G.dpsAvg = expDPS(s, 0); G.dpsT = 0; G.lossE = 0; G.lossB = 0; G.allies = []; G.rec = 0; G.recShow = 0; G.recT = 0; G.gainJ = 0; G.gainR = 0;
   buildStage(s);
-  G.banner = { big: '第' + kan(s) + '陣', small: THEMES[G.theme].name, t: 2.6, col: '#ffd34d' };
+  var kitN = 0; for (var kk in G.spec) kitN++;
+  G.banner = { big: '第' + kan(s) + '陣', small: THEMES[G.theme].name + (s >= 6 ? ' ・ ' + MAIN[G.main].name + (kitN ? 'と助っ人' + kitN + 'つで出陣' : 'で出陣') : ''), t: 2.6, col: '#ffd34d' };
   setMusic('battle');
+}
+function startKit(s) {      // 先の陣ほど、はじめから よい武器を持って出陣する(敵が強くなる分 こちらも強く)
+  if (s < 6) return;
+  var tier = Math.min(4, Math.floor((s - 3) / 3));
+  G.main = MAIN_KEYS[tier]; G.mainLv = s >= 16 ? 2 : 1;
+  var cnt = Math.min(4, Math.floor((s - 6) / 3)), seq = ['kusarigama', 'bakuchiku', 'kaminari', 'fuma', 'hanabi', 'yoto', 'horoku'];
+  var off = s % seq.length;
+  for (var i = 0; i < cnt; i++) G.spec[seq[(off + i) % seq.length]] = s >= 15 ? 2 : 1;
 }
 function setMusic(m) { G.music = m; if (window.SND) SND.music(m); }
 
@@ -229,8 +244,8 @@ function spawnNumGates(e) {
 }
 function offerWeapons(count) {
   var c = [], cur = MAIN[G.main].tier;
-  MAIN_KEYS.forEach(function (k) { var t = MAIN[k].tier; if (t > cur && t <= cur + 2) c.push(k, k, k); else if (k === G.main && G.mainLv < 3) c.push(k, k); });
-  SPEC_KEYS.forEach(function (k) { if ((G.spec[k] || 0) < 3) { c.push(k); if (!G.spec[k]) c.push(k); } });
+  MAIN_KEYS.forEach(function (k) { var t = MAIN[k].tier; if (t > cur && t <= cur + 2) c.push(k, k, k); else if (k === G.main && G.mainLv < maxLv()) c.push(k, k); });
+  SPEC_KEYS.forEach(function (k) { if ((G.spec[k] || 0) < maxLv()) { c.push(k); if (!G.spec[k]) c.push(k); } });
   var out = [];
   for (var i = 0; i < 40 && out.length < count && c.length; i++) { var k = pick(c); if (out.indexOf(k) < 0) out.push(k); }
   return out;
@@ -240,7 +255,9 @@ function spawnWeaponGates(e) {
   var wg = function (k) { return { kind: 'wpn', w: k, lv: 1, charge: 0, flash: 0 }; };
   if (ws.length < 2) { spawnNumGates(e); return; }
   var gk = GK(s);
-  if (rnd() < 0.55) list = [wg(ws[0]), wg(ws[1]), numGate('add', Math.max(4, nice(base * rr(0.5, 0.8) * gk)))];
+  if (s >= 10 && rnd() < 0.5) { var w3 = offerWeapons(3); if (w3.length === 3) ws = w3; }
+  if (ws.length === 3) list = [wg(ws[0]), wg(ws[1]), wg(ws[2])];
+  else if (rnd() < 0.55) list = [wg(ws[0]), wg(ws[1]), numGate('add', Math.max(4, nice(base * rr(0.5, 0.8) * gk)))];
   else list = [wg(ws[0]), numGate('add', -Math.max(3, nice(base * rr(0.3, 0.5) * (1 + (gk - 1) * 0.7)))), wg(ws[1])];
   addGateRow(shuffle(list), base);
 }
@@ -313,9 +330,9 @@ function spawnLog(e) {
 }
 function spawnBoss() {
   var s = G.stage, def = BOSSES[(s - 1) % BOSSES.length];
-  var lv = 0; for (var k in G.spec) lv += G.spec[k];
-  var est = 0.3 * expDPS(s, 1) * 1.5 + 0.7 * P() * (1 + 0.3 * lv);
-  var hp = 17 * est * Math.sqrt(D(s)) * (s === 1 ? 0.72 : s === 2 ? 0.86 : 1);   // はじめの陣は少しやさしく
+  var lv = 0; ['kaminari', 'yoto', 'fuma', 'hanabi'].forEach(function (k) { lv += G.spec[k] || 0; });   // 大将に当たる助っ人の武器だけ数える
+  var est = 0.25 * expDPS(s, 1) * 1.5 + 0.75 * P() * (1 + 0.07 * Math.min(lv, 10));
+  var hp = (s >= 9 ? 14 : 17) * est * Math.sqrt(D(s)) * (s === 1 ? 0.72 : s === 2 ? 0.86 : 1);   // はじめの陣は少しやさしく
   G.boss = { def: def, x: 0, z: 1500, hp: hp, hpMax: hp, phase: 'enter', atkT: 3.2, crushT: 1.2, flash: 0, deadT: 0, t: 0, dash: null, ai: 0, rage: 0 };
   G.banner = { big: def.n, small: '大将 見参', t: 3.0, col: '#ff4a3a', boss: true };
   G.flash = 0.6; sfx('roar'); setMusic('boss');
@@ -628,7 +645,7 @@ function chargeGate(row, g, dmg) {
   var thr = unit * (g.kind === 'wpn' ? 1.1 : g.op === 'mul' ? 0.9 : 0.45), n = 0;
   while (g.charge >= thr && n++ < 3) {
     g.charge -= thr;
-    if (g.kind === 'wpn') { if (g.lv < 3) { g.lv++; g.flash = 0.3; sfx('flip'); } else g.charge = 0; }
+    if (g.kind === 'wpn') { if (g.lv < maxLv()) { g.lv++; g.flash = 0.3; sfx('flip'); } else g.charge = 0; }
     else if (g.op === 'add') { var was = g.v; g.v += row.step; if (was < 0 && g.v >= 0) { g.flash = 0.3; sfx('flip'); } else sfx('tick'); }
     else if (g.v < 1) { g.v += 1; g.flash = 0.3; sfx('flip'); } else g.charge = 0;
   }
@@ -646,11 +663,11 @@ function gateGood(g) { return g.kind === 'wpn' || (g.op === 'add' ? g.v > 0 : g.
 function takeWeapon(g) {
   var k = g.w;
   if (MAIN[k]) {
-    if (k === G.main) G.mainLv = Math.min(3, Math.max(G.mainLv + 1, g.lv));
+    if (k === G.main) G.mainLv = Math.min(maxLv(), Math.max(G.mainLv + 1, g.lv));
     else { G.main = k; G.mainLv = Math.max(1, g.lv); G.fireT = 0; }
     addText(MAIN[k].name + ' Lv' + G.mainLv, 0, 40, '#ffd34d', 26, true);
   } else {
-    G.spec[k] = Math.min(3, Math.max((G.spec[k] || 0) + 1, g.lv));
+    G.spec[k] = Math.min(maxLv(), Math.max((G.spec[k] || 0) + 1, g.lv));
     addText(SPEC[k].name + ' Lv' + G.spec[k], 0, 40, '#ffb0ff', 26, true);
   }
   sfx('power'); G.flash = Math.max(G.flash, 0.2);
@@ -863,8 +880,8 @@ function bossAttack(b, atk) {
     shuffle([0, 1, 2]).slice(0, 2).forEach(function (l, k) { G.warns.push({ k: 'lane', lane: l, t: 1.1 + k * 0.7, max: 1.1 + k * 0.7, fire: true, label: '炎' }); });
     sfx('warn');
   } else if (atk === 'summon') {
-    var cnt = Math.min(70, 26 + s * 4 + b.rage * 10), m = b.def.minion;
-    for (var j = 0; j < cnt; j++) addEnemy(pick(m), b.x + rr2(150), b.z - 40 + rr2(40) + Math.floor(j / 10) * 30, 0.9, 0.9, 0.8);
+    var cnt = Math.min(40, 22 + s * 2 + b.rage * 6), m = b.def.minion;
+    for (var j = 0; j < cnt; j++) { var mt = pick(m); addEnemy(mt, b.x + rr2(150), b.z - 40 + rr2(40) + Math.floor(j / 10) * 30, 0.9, ET[mt].big ? 0.5 : 0.9, 0.8); }
     addText('手下を呼んだ!', 0, 220, '#ffb347', 22, true); sfx('roar');
   }
 }
@@ -1476,7 +1493,8 @@ function drawHUD() {
   for (var si = 0; si < specs.length; si++) {
     var k = specs[si], sx0 = 128 + si * 32, ic = art('icon', k, 0);
     if (ic) ctx.drawImage(ic, sx0, wy + 2, 28, 28);
-    for (var l = 0; l < 3; l++) { ctx.fillStyle = l < G.spec[k] ? '#ffd34d' : 'rgba(255,255,255,.2)'; ctx.fillRect(sx0 + 3 + l * 8, wy + 32, 6, 3); }
+    var ml = maxLv(), pw2 = 24 / ml;
+    for (var l = 0; l < ml; l++) { ctx.fillStyle = l < G.spec[k] ? '#ffd34d' : 'rgba(255,255,255,.2)'; ctx.fillRect(sx0 + 2 + l * pw2, wy + 32, pw2 - 2, 3); }
   }
   if (G.banner) {      // 見出し
     var bn = G.banner, a = Math.min(1, bn.t * 2.2, (3 - bn.t) * 5);
