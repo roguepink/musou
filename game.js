@@ -11,7 +11,7 @@ var CX = 180, HY = 140, SY = 500;               // 画面のまん中・地平�
 var DT = 1 / 60;
 var ROAD = 172, LANE = ROAD * 2 / 3, KX = 1.07, D0 = 320, SPAWN = 1650;
 var JF = '"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo","Noto Sans JP",system-ui,sans-serif';
-var NUMF = 'Dela,' + JF, BRUSH = 'Yuji,' + JF;
+var NUMF = 'Dela,' + JF, BRUSH = 'Yuji,' + JF, UIF = '800 '; // UIF + '14px ' + JF = 小さい字(ふつうの太字)
 var SAVE_KEY = 'musou-save-v2';
 var MAXSHOW = 150, MAX_SHOOT = 16;
 
@@ -98,8 +98,8 @@ var LVMUL = [1, 1, 1.35, 1.75];
 
 // 敵(hb = ふつうの1発で 何発ぶんの強さか)
 var ET = {
-  ashigaru: { name: '足軽',     px: 50,  r: 10, hb: 1.0, spd: 32,  pow: 1, sc: 10,  steer: 40 },
-  ninja:    { name: '忍',       px: 46,  r: 9,  hb: 0.8, spd: 62,  pow: 1, sc: 12,  steer: 80, weave: 1 },
+  ashigaru: { name: '足軽',     px: 50,  r: 10, hb: 0.8, spd: 32,  pow: 1, sc: 10,  steer: 40 },
+  ninja:    { name: '忍',       px: 46,  r: 9,  hb: 0.7, spd: 62,  pow: 1, sc: 12,  steer: 80, weave: 1 },
   gaikotsu: { name: '骸骨武者', px: 52,  r: 10, hb: 1.6, spd: 26,  pow: 1, sc: 12,  steer: 34 },
   yurei:    { name: '怨霊',     px: 54,  r: 10, hb: 1.4, spd: 44,  pow: 1, sc: 14,  steer: 50, weave: 2, ghost: 1 },
   teppo:    { name: '鉄砲足軽', px: 50,  r: 10, hb: 1.4, spd: 24,  pow: 1, sc: 14,  steer: 0, hold: 640, gun: 1 },
@@ -149,7 +149,7 @@ var G = {
   auto: false, timeScale: 1, music: 'off'
 };
 function n0(s) { return Math.min(30, 10 + 2 * (s - 1)); }
-function D(s) { return 1 + 0.13 * (s - 1); }
+function D(s) { return 1 + 0.08 * (s - 1); }
 function expN(s, p) { var a = n0(s), e = 220 * (1 + 0.12 * (s - 1)); return a * Math.pow(e / a, p); }
 function unitDps(p) { return 3 + 3 * p; }
 function expDPS(s, p) { return expN(s, p) * unitDps(p); }
@@ -158,7 +158,7 @@ function P() { return Math.max(1, G.n) * mainUnitDps(); }                       
 function bulletDmgExp(s, p) { return expN(s, p) * (1 + 0.8 * p) / MAX_SHOOT; }            // ふつうの1発の強さ
 function actBulletDmg() { return Math.max(1, G.n) * MAIN[G.main].dmg * LVMUL[G.mainLv] * G.power / Math.min(G.n || 1, MAX_SHOOT); }
 function hpUnit(s, p) { return (0.6 * bulletDmgExp(s, p) + 0.4 * Math.min(actBulletDmg(), bulletDmgExp(s, p) * 3)) * D(s); }
-function powUnit(s, p) { return Math.max(1, Math.round(expN(s, p) * 0.022 * Math.sqrt(D(s)))); }
+function powUnit(s, p) { return Math.max(1, Math.round(expN(s, p) * 0.017 * Math.sqrt(D(s)))); }
 function squadR() { return 7.4 * Math.sqrt(Math.max(1, Math.min(G.nShow, MAXSHOW))) + 10; }
 
 /* ---------------- 陣を組み立てる ---------------- */
@@ -173,10 +173,10 @@ function buildStage(s) {
     if (s >= 6) plan.splice(12, 0, 'A');
     if (rnd() < 0.5) { var t = plan[3]; plan[3] = plan[9]; plan[9] = t; }
   }
-  var ev = [], at = 250;
+  var ev = [], at = 160;
   for (var k = 0; k < plan.length; k++) {
     ev.push({ at: at, type: plan[k], p: k / (plan.length - 1), first: k === 0 });
-    at += plan[k] === 'R' ? 760 : plan[k] === 'W' ? 600 : 520;
+    at += k === 0 ? 760 : plan[k] === 'R' ? 760 : plan[k] === 'W' ? 600 : 520;
   }
   G.events = ev; G.evi = 0; G.bossAt = at + 200;
 }
@@ -219,7 +219,7 @@ function spawnNumGates(e) {
 }
 function offerWeapons(count) {
   var c = [], cur = MAIN[G.main].tier;
-  MAIN_KEYS.forEach(function (k) { var t = MAIN[k].tier; if (t > cur && t <= cur + 2) c.push(k); else if (k === G.main && G.mainLv < 3) c.push(k); });
+  MAIN_KEYS.forEach(function (k) { var t = MAIN[k].tier; if (t > cur && t <= cur + 2) c.push(k, k, k); else if (k === G.main && G.mainLv < 3) c.push(k, k); });
   SPEC_KEYS.forEach(function (k) { if ((G.spec[k] || 0) < 3) { c.push(k); if (!G.spec[k]) c.push(k); } });
   var out = [];
   for (var i = 0; i < 40 && out.length < count && c.length; i++) { var k = pick(c); if (out.indexOf(k) < 0) out.push(k); }
@@ -253,7 +253,7 @@ function addEnemy(type, x, z, p, hpMul, powMul) {
 }
 function spawnWave(e) {
   var s = G.stage, p = e.p, pool = avail(s), main = pick(pool);
-  var count = Math.round(24 + 34 * p + s * 3), cols = 9, sp = (ROAD * 2 - 30) / (cols - 1);
+  var count = clamp(Math.round(expN(s, p) * 0.38 + 9 + s), 12, 90), cols = count < 24 ? 6 : 9, sp = (ROAD * 2 - 30) / (cols - 1);
   for (var i = 0; i < count; i++) {
     var c = i % cols, row = Math.floor(i / cols), t = rnd() < 0.7 ? main : pick(pool);
     addEnemy(t, -ROAD + 15 + c * sp + rr(-7, 7) + (row % 2) * sp * 0.5, SPAWN + row * 30 + rr(0, 10), p);
@@ -263,9 +263,9 @@ function spawnWave(e) {
 }
 function spawnRush(e) {
   var s = G.stage, p = e.p, pool = avail(s);
-  var total = Math.min(240, Math.round(100 + 70 * p + s * 8)), ranks = Math.ceil(total / 11);
+  var total = clamp(Math.round(expN(s, p) * 0.6 + 70 + s * 3), 80, 200), ranks = Math.ceil(total / 11);
   for (var r = 0; r < ranks; r++) G.queue.push({ t: r * 0.22, f: (function (rk) { return function () {
-    for (var c = 0; c < 11; c++) addEnemy(rk % 3 === 0 ? pick(pool) : pool[0], -ROAD + 12 + c * (ROAD * 2 - 24) / 10 + rr(-8, 8), SPAWN + rr(0, 20), p, 0.85);
+    for (var c = 0; c < 11; c++) addEnemy(rk % 3 === 0 ? pick(pool) : pool[0], -ROAD + 12 + c * (ROAD * 2 - 24) / 10 + rr(-8, 8), SPAWN + rr(0, 20), p, 0.85, 0.6);
   }; })(r) });
   var bigs = 2 + Math.floor(s / 2);
   for (var b = 0; b < bigs; b++) G.queue.push({ t: 1 + b * 0.9, f: function () { addEnemy(pick(bigPool(s)), rr(-ROAD + 40, ROAD - 40), SPAWN, p); } });
@@ -302,8 +302,9 @@ function spawnLog(e) {
 }
 function spawnBoss() {
   var s = G.stage, def = BOSSES[(s - 1) % BOSSES.length];
-  var est = 0.55 * expDPS(s, 1) * 1.8 + 0.45 * G.dpsAvg;
-  var hp = 30 * est * Math.sqrt(D(s));
+  var lv = 0; for (var k in G.spec) lv += G.spec[k];
+  var est = 0.3 * expDPS(s, 1) * 1.5 + 0.7 * P() * (1 + 0.3 * lv);
+  var hp = 17 * est * Math.sqrt(D(s)) * (s === 1 ? 0.72 : s === 2 ? 0.86 : 1);   // はじめの陣は少しやさしく
   G.boss = { def: def, x: 0, z: 1500, hp: hp, hpMax: hp, phase: 'enter', atkT: 3.2, crushT: 1.2, flash: 0, deadT: 0, t: 0, dash: null, ai: 0, rage: 0 };
   G.banner = { big: def.n, small: '大将 見参', t: 3.0, col: '#ff4a3a', boss: true };
   G.flash = 0.6; sfx('roar'); setMusic('boss');
@@ -405,7 +406,7 @@ function volley(w) {
   var dmg = w.dmg * LVMUL[G.mainLv] * G.power * G.n / S;
   for (var j = 0; j < S; j++) {
     var u = FORM[Math.min(m - 1, Math.floor((j + Math.random()) * m / S))];
-    var vx = (Math.random() - 0.5) * 2 * w.spread * w.spd;
+    var vx = (Math.random() - 0.5) * 2 * (w.spread + 0.05) * w.spd + u.x * 0.6;
     G.bullets.push({ x: G.sx + u.x, z: u.z + 4, z0: u.z, h: 16, vx: vx, vz: w.spd * (0.95 + Math.random() * 0.1), dmg: dmg,
       pierce: w.pierce, splash: w.splash, kind: w.kind, rot: Math.random() * 6, last: null });
   }
@@ -704,7 +705,7 @@ function updEnemies(dt) {
     if (e.kb > 0) { e.z += e.kb * 6 * dt; e.kb = Math.max(0, e.kb - dt * 60); }
     e.z -= adv * dt;
     var dx = G.sx - e.x;
-    if (G.n > 0 && e.z < 520 && e.T.steer) e.x += clamp(dx, -e.T.steer * dt, e.T.steer * dt);
+    if (G.n > 0 && e.z < 720 && e.T.steer) e.x += clamp(dx, -e.T.steer * 1.4 * dt, e.T.steer * 1.4 * dt);
     if (e.T.weave) e.x += Math.sin(e.ph * (e.T.weave === 2 ? 2.4 : 5)) * (e.T.weave === 2 ? 50 : 40) * dt;
     e.x = clamp(e.x, -ROAD + 6, ROAD - 6);
     if (G.n > 0 && e.z < R * 0.82 + e.r && e.z > -R * 0.8 && Math.abs(dx) < R + e.r * 0.6) {
@@ -755,7 +756,7 @@ function updBoss(dt) {
     if (d.t >= 0.3 && !d.hit) {
       d.hit = true;
       var ov = overlap(laneX(d.lane) - LANE / 2, laneX(d.lane) + LANE / 2, squadR());
-      if (ov > 0) bossHurtsSquad(ov * 0.45);
+      if (ov > 0) bossHurtsSquad(ov * 0.35);
       G.shake = 16; sfx('slam');
     }
     return;
@@ -763,17 +764,17 @@ function updBoss(dt) {
   var hpR = b.hp / b.hpMax;
   b.rage = hpR < 0.25 ? 2 : hpR < 0.6 ? 1 : 0;
   if (b.phase === 'fight') {      // じりじり迫ってくる
-    b.z -= (9 + b.rage * 4) * dt;
+    b.z -= (7 + b.rage * 3) * dt;
     b.x += (Math.sin(b.t * 0.5) * 60 - b.x) * Math.min(1, dt * 0.8);
     if (b.z <= 170) { b.z = 170; b.phase = 'crush'; G.banner = { big: '大将が目の前に!', small: '急いで倒せ!', t: 1.8, col: '#ff3a2a' }; sfx('roar'); }
   }
   if (b.phase === 'crush') {
     b.crushT -= dt;
-    if (b.crushT <= 0) { b.crushT = 1.1; bossHurtsSquad(0.09); G.shake = 14; sfx('slam'); G.warns.push({ k: 'flashring', x: G.sx, z: 0, t: 0.3, max: 0.3 }); }
+    if (b.crushT <= 0) { b.crushT = 1.2; bossHurtsSquad(0.06); G.shake = 14; sfx('slam'); G.warns.push({ k: 'flashring', x: G.sx, z: 0, t: 0.3, max: 0.3 }); }
   }
   b.atkT -= dt;
   if (b.atkT <= 0 && G.n > 0) {
-    b.atkT = [3.0, 2.2, 1.6][b.rage];
+    b.atkT = [3.4, 2.6, 2.0][b.rage];
     var atk = b.def.atk[b.ai++ % b.def.atk.length];
     if (b.rage === 2 && Math.random() < 0.4) atk = pick(b.def.atk);
     bossAttack(b, atk);
@@ -790,16 +791,16 @@ function bossHurtsSquad(frac) {
 function bossAttack(b, atk) {
   var R = squadR(), s = G.stage;
   if (atk === 'slam') {
-    G.warns.push({ k: 'circle', x: clamp(G.sx, -ROAD + 60, ROAD - 60), z: 0, r: 72, t: 1.15, max: 1.15, frac: 0.42, big: true });
+    G.warns.push({ k: 'circle', x: clamp(G.sx, -ROAD + 60, ROAD - 60), z: 0, r: 72, t: 1.15, max: 1.15, frac: 0.3, big: true });
     sfx('warn');
   } else if (atk === 'sweep') {
-    G.warns.push({ k: 'sweep', safe: Math.floor(Math.random() * 3), t: 1.45, max: 1.45, frac: 0.45 });
+    G.warns.push({ k: 'sweep', safe: Math.floor(Math.random() * 3), t: 1.5, max: 1.5, frac: 0.3 });
     addText('なぎ払い!', 0, 200, '#ff6a4a', 26, true); sfx('warn');
   } else if (atk === 'charge') {
     G.warns.push({ k: 'lane', lane: laneOf(G.sx), t: 1.25, max: 1.25, charge: true, label: '突進' });
     sfx('warn');
   } else if (atk === 'rain') {
-    for (var i = 0; i < 5 + b.rage; i++) G.warns.push({ k: 'circle', x: clamp(G.sx + rr2(R + 60), -ROAD + 30, ROAD - 30), z: rr2(40), r: 34, t: 1.0 + i * 0.12, max: 1.0 + i * 0.12, frac: 0.16, rocks: true });
+    for (var i = 0; i < 5 + b.rage; i++) G.warns.push({ k: 'circle', x: clamp(G.sx + rr2(R + 60), -ROAD + 30, ROAD - 30), z: rr2(40), r: 34, t: 1.0 + i * 0.12, max: 1.0 + i * 0.12, frac: 0.1, rocks: true });
     sfx('warn');
   } else if (atk === 'breath') {
     shuffle([0, 1, 2]).slice(0, 2).forEach(function (l, k) { G.warns.push({ k: 'lane', lane: l, t: 1.1 + k * 0.7, max: 1.1 + k * 0.7, fire: true, label: '炎' }); });
@@ -813,14 +814,14 @@ function bossAttack(b, atk) {
 function killBoss() {
   var b = G.boss; b.phase = 'dead'; b.hp = 0;
   G.score += 3000 * G.stage + G.n * 10; G.kills++; G.stageKills++;
-  G.enemies.forEach(function (e) { if (!e.dead) killEnemy(e, true); }); G.warns = []; G.ebul = [];
+  G.enemies.forEach(function (e) { if (!e.dead) killEnemy(e, true); }); G.warns.length = 0; G.ebul.length = 0;
   G.shake = 18; G.flash = 1; G.slow = 1.4; G.clearT = 2.6; sfx('bossdown'); setMusic('off');
   G.banner = { big: '討ち取ったり!', small: '大将 ' + b.def.n + ' を倒した', t: 2.6, col: '#ffd34d', boss: true };
 }
 function updEbul(dt) {
   var R = squadR();
   for (var i = G.ebul.length - 1; i >= 0; i--) {
-    var f = G.ebul[i];
+    var f = G.ebul[i]; if (!f) continue;
     if (f.mine) {     // こちらが投げた物(爆竹・焙烙玉・花火)
       f.t += dt; var u = Math.min(1, f.t / f.max);
       f.x = f.x0 + (f.tx - f.x0) * u; f.z = f.z0 + (f.tz - f.z0) * u; f.h = Math.sin(u * Math.PI) * (f.k === 'shell' ? 260 : 120);
@@ -853,7 +854,7 @@ function firework(x, z, dmg) {
 function updWarns(dt) {
   var R = squadR();
   for (var i = G.warns.length - 1; i >= 0; i--) {
-    var w = G.warns[i]; w.t -= dt;
+    var w = G.warns[i]; if (!w) continue; w.t -= dt;
     if (w.t > 0) continue;
     G.warns.splice(i, 1);
     if (w.k === 'flashring') continue;
@@ -873,7 +874,7 @@ function updWarns(dt) {
       if (w.charge && G.boss && G.boss.phase !== 'dead') { G.boss.dash = { lane: w.lane, t: 0, z: G.boss.z }; continue; }
       if (w.fire) {
         var ovl = overlap(laneX(w.lane) - LANE / 2, laneX(w.lane) + LANE / 2, R);
-        if (ovl > 0) bossHurtsSquad(ovl * 0.35);
+        if (ovl > 0) bossHurtsSquad(ovl * 0.25);
         for (var q = 0; q < 12; q++) fx('glow', laneX(w.lane) + rr2(LANE / 2), q * 50 - 40, 10, 0, 0, 30, 0.6, '#ff7a2a', 70);
         sfx('boom'); G.shake = 8;
       }
@@ -919,7 +920,7 @@ function bot() {
   for (i = 0; i < G.gates.length; i++) { var r = G.gates[i]; if (!r.passed && r.z > 0 && r.z < 700 && (!row || r.z < row.z)) row = r; }
   if (row) {
     var best = 1, bv = -1;
-    row.list.forEach(function (g, li) { var v = g.kind === 'wpn' ? G.n * 1.45 : gateResult(g, G.n); if (v > bv) { bv = v; best = li; } });
+    row.list.forEach(function (g, li) { var v = g.kind === 'wpn' ? G.n * 2.2 : gateResult(g, G.n); if (v > bv) { bv = v; best = li; } });
     tgt = laneX(best);
   } else {
     var sx = 0, cnt = 0;
@@ -1230,7 +1231,7 @@ function drawGateRow(row) {
       var ic = art('icon', g.w, 0), isz = 50 * s;
       ctx.fillStyle = 'rgba(30,10,4,.55)'; ctx.beginPath(); ctx.arc(cx, y - H0 * 0.58, isz * 0.6, 0, 6.283); ctx.fill();
       if (ic) ctx.drawImage(ic, cx - isz / 2, y - H0 * 0.58 - isz / 2, isz, isz);
-      ctx.font = Math.max(7, (wname(g.w).length > 3 ? 12 : 15) * s) + 'px ' + NUMF;
+      ctx.font = '900 ' + Math.max(7, (wname(g.w).length > 3 ? 13 : 16) * s) + 'px ' + JF;
       ctx.lineWidth = 4 * s; ctx.strokeStyle = '#2a0e04'; var nm = wname(g.w);
       ctx.strokeText(nm, cx, y - H0 * 0.14); ctx.fillStyle = '#fff'; ctx.fillText(nm, cx, y - H0 * 0.14);
       ctx.font = Math.max(6, 12 * s) + 'px ' + NUMF; ctx.strokeText('Lv' + g.lv, cx, y - H0 * 0.92); ctx.fillStyle = '#ffe9a0'; ctx.fillText('Lv' + g.lv, cx, y - H0 * 0.92);
@@ -1392,7 +1393,7 @@ function drawHUD() {
   ctx.fillStyle = pg; rrect(ctx, bx + 2, y + 11, Math.max(4, (bw - 4) * p), 10, 5); ctx.fill();
   var bsp = art('boss', BOSSES[(G.stage - 1) % BOSSES.length].k, 0);
   if (bsp) ctx.drawImage(bsp, bx + bw - 16, y - 6, 38, 38);
-  ctx.textAlign = 'right'; ctx.font = '11px ' + NUMF; ctx.fillStyle = '#d8c8b0'; ctx.fillText('撃破', W - 100, y + 8);      // 撃破の数
+  ctx.textAlign = 'right'; ctx.font = UIF + '11px ' + JF; ctx.fillStyle = '#d8c8b0'; ctx.fillText('撃破', W - 100, y + 8);      // 撃破の数
   ctx.font = '17px ' + NUMF; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(10,4,2,.8)';
   var kc = String(G.stageKills); ctx.strokeText(kc, W - 100, y + 24); ctx.fillStyle = '#fff'; ctx.fillText(kc, W - 100, y + 24);
   var b = G.boss;      // 大将の体力
@@ -1403,13 +1404,13 @@ function drawHUD() {
     ctx.fillStyle = hg; rrect(ctx, 22, by + 15, Math.max(0, (W - 44) * b.hp / b.hpMax), 9, 4); ctx.fill();
     ctx.textAlign = 'left'; ctx.font = '13px ' + BRUSH; ctx.fillStyle = '#fff'; ctx.fillText('大将 ' + b.def.n + (b.rage === 2 ? ' 激怒' : b.rage ? ' 怒り' : ''), 24, by + 8);
     var dz = clamp((b.z - 170) / (620 - 170), 0, 1);
-    ctx.textAlign = 'right'; ctx.font = '11px ' + NUMF; ctx.fillStyle = dz < 0.3 ? '#ff6a5a' : '#ffd8a0'; ctx.fillText(b.phase === 'crush' ? '目の前!' : '距離 ' + Math.round(dz * 100), W - 24, by + 8);
+    ctx.textAlign = 'right'; ctx.font = UIF + '11px ' + JF; ctx.fillStyle = dz < 0.3 ? '#ff6a5a' : '#ffd8a0'; ctx.fillText(b.phase === 'crush' ? '目の前!' : '距離 ' + Math.round(dz * 100), W - 24, by + 8);
   }
   var wy = H - SAFE_B - 46, w = MAIN[G.main];      // 武器
   var specs = SPEC_KEYS.filter(function (k) { return G.spec[k]; });
   plaque(8, wy, 124 + specs.length * 32, 38);
   var mic = art('icon', G.main, 0); if (mic) ctx.drawImage(mic, 12, wy + 3, 32, 32);
-  ctx.textAlign = 'left'; ctx.font = '14px ' + NUMF; ctx.fillStyle = '#fff'; ctx.fillText(w.name, 48, wy + 14);
+  ctx.textAlign = 'left'; ctx.font = '900 15px ' + JF; ctx.fillStyle = '#fff'; ctx.fillText(w.name, 48, wy + 14);
   ctx.font = '11px ' + NUMF; ctx.fillStyle = '#ffd34d'; ctx.fillText('Lv' + G.mainLv, 48, wy + 29);
   for (var si = 0; si < specs.length; si++) {
     var k = specs[si], sx0 = 128 + si * 32, ic = art('icon', k, 0);
@@ -1430,7 +1431,7 @@ function drawHUD() {
     var sc = 1 + Math.max(0, (bn.t - (bn.boss ? 2.6 : 1.9))) * 1.2;
     ctx.save(); ctx.translate(CX, cy - (bn.boss ? 12 : 8)); ctx.scale(sc, sc);
     ctx.strokeText(big, 0, 0); ctx.fillStyle = bn.col; ctx.fillText(big, 0, 0); ctx.restore();
-    ctx.font = (bn.boss ? 17 : 15) + 'px ' + NUMF; ctx.fillStyle = '#fff'; ctx.fillText(bn.small, CX, cy + (bn.boss ? 40 : 26));
+    ctx.font = '900 ' + (bn.boss ? 17 : 15) + 'px ' + JF; ctx.fillStyle = '#fff'; ctx.fillText(bn.small, CX, cy + (bn.boss ? 40 : 26));
     ctx.globalAlpha = 1;
   }
 }
