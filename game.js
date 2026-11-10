@@ -151,15 +151,18 @@ var G = {
 };
 function n0(s) { return Math.min(30, 10 + 2 * (s - 1)); }
 function D(s) { return 1 + 0.08 * (s - 1); }
+function GK(s) { return 1 + Math.min(1.6, Math.max(0, s - 4) * 0.1); }   // 第五陣から 増える量・減る量を少しずつ大きく(人数の上下を はげしく)
 function expN(s, p) { var a = n0(s), e = 220 * (1 + 0.12 * (s - 1)); return a * Math.pow(e / a, p); }
 function unitDps(p) { return 3 + 3 * p; }
 function expDPS(s, p) { return expN(s, p) * unitDps(p); }
 function mainUnitDps() { var w = MAIN[G.main]; return w.dmg * w.rate * LVMUL[G.mainLv] * G.power; }
 function P() { return Math.max(1, G.n) * mainUnitDps(); }                                  // いまの攻撃の強さ(1秒あたり)
-function bulletDmgExp(s, p) { return expN(s, p) * (1 + 0.8 * p) / MAX_SHOOT; }            // ふつうの1発の強さ
+function expE(s, p) { return expN(s, p) * (1 + (GK(s) - 1) * 0.75); }   // 敵の強さの もとになる人数(味方が増えるぶん 敵も少し強く)
+function bulletDmgExp(s, p) { return expE(s, p) * (1 + 0.8 * p) / MAX_SHOOT; }            // ふつうの1発の強さ
 function actBulletDmg() { return Math.max(1, G.n) * MAIN[G.main].dmg * LVMUL[G.mainLv] * G.power / Math.min(G.n || 1, MAX_SHOOT); }
 function hpUnit(s, p) { return (0.6 * bulletDmgExp(s, p) + 0.4 * Math.min(actBulletDmg(), bulletDmgExp(s, p) * 3)) * D(s); }
-function powUnit(s, p) { return Math.max(1, Math.round(expN(s, p) * 0.017 * Math.sqrt(D(s)))); }
+function s5rec() { return Math.max(3, 6 - Math.floor(Math.max(0, G.stage - 4) / 3)); }   // 何人倒すと1人 降参するか(陣が進むと少なく)
+function powUnit(s, p) { return Math.max(1, Math.round(expE(s, p) * 0.017 * Math.sqrt(D(s)))); }
 function squadR() { return 7.4 * Math.sqrt(Math.max(1, Math.min(G.nShow, MAXSHOW))) + 10; }
 
 /* ---------------- 陣を組み立てる ---------------- */
@@ -172,6 +175,8 @@ function buildStage(s) {
     if (s >= 3) plan.splice(9, 0, 'K');
     if (s >= 4) plan.splice(5, 0, 'W');
     if (s >= 6) plan.splice(12, 0, 'A');
+    if (s >= 7) plan.splice(6, 0, 'J');
+    if (s >= 10) plan.splice(13, 0, 'G');
     if (rnd() < 0.5) { var t = plan[3]; plan[3] = plan[9]; plan[9] = t; }
   }
   var ev = [], at = 160;
@@ -208,10 +213,11 @@ function spawnEvent(e) {
 function numGate(op, v) { return { kind: 'num', op: op, v: v, charge: 0, flash: 0 }; }
 function spawnNumGates(e) {
   var s = G.stage, p = e.p, base = expN(s, p);
-  var good = Math.max(5, nice(base * rr(0.65, 1.05))), good2 = Math.max(3, nice(base * rr(0.25, 0.45)));
-  var bad = Math.max(3, nice(base * rr(0.3, 0.6))), bad2 = Math.max(2, nice(base * rr(0.15, 0.3)));
+  var gk = GK(s), bk = 1 + (gk - 1) * 0.7;
+  var good = Math.max(5, nice(base * rr(0.65, 1.05) * gk)), good2 = Math.max(3, nice(base * rr(0.25, 0.45) * gk));
+  var bad = Math.max(3, nice(base * rr(0.3, 0.6) * bk)), bad2 = Math.max(2, nice(base * rr(0.15, 0.3) * bk));
   var list, r = rnd();
-  if (e.first) list = [numGate('add', nice(base * 1.4)), numGate('add', -bad), numGate('add', good2)];
+  if (e.first) list = [numGate('add', nice(base * 1.4 * gk)), numGate('add', -bad), numGate('add', good2)];
   else if (r < 0.3) list = [numGate('add', good), numGate('mul', 1), numGate('add', -bad)];
   else if (r < 0.5) list = [numGate('add', -bad), numGate('add', good), numGate('mul', -1)];
   else if (r < 0.7) list = [numGate('mul', p > 0.4 && rnd() < 0.5 ? 2 : 1), numGate('add', -bad), numGate('add', good2)];
@@ -231,8 +237,9 @@ function spawnWeaponGates(e) {
   var s = G.stage, p = e.p, base = expN(s, p), ws = offerWeapons(2), list;
   var wg = function (k) { return { kind: 'wpn', w: k, lv: 1, charge: 0, flash: 0 }; };
   if (ws.length < 2) { spawnNumGates(e); return; }
-  if (rnd() < 0.55) list = [wg(ws[0]), wg(ws[1]), numGate('add', Math.max(4, nice(base * rr(0.5, 0.8))))];
-  else list = [wg(ws[0]), numGate('add', -Math.max(3, nice(base * rr(0.3, 0.5)))), wg(ws[1])];
+  var gk = GK(s);
+  if (rnd() < 0.55) list = [wg(ws[0]), wg(ws[1]), numGate('add', Math.max(4, nice(base * rr(0.5, 0.8) * gk)))];
+  else list = [wg(ws[0]), numGate('add', -Math.max(3, nice(base * rr(0.3, 0.5) * (1 + (gk - 1) * 0.7)))), wg(ws[1])];
   addGateRow(shuffle(list), base);
 }
 function addGateRow(list, base) {
@@ -255,7 +262,7 @@ function addEnemy(type, x, z, p, hpMul, powMul) {
 }
 function spawnWave(e) {
   var s = G.stage, p = e.p, pool = avail(s), main = pick(pool);
-  var count = clamp(Math.round(expN(s, p) * 0.38 + 9 + s), 12, 90), cols = count < 24 ? 6 : 9, sp = (ROAD * 2 - 30) / (cols - 1);
+  var count = clamp(Math.round(expE(s, p) * 0.3 + 9 + s), 12, 110), cols = count < 24 ? 6 : 9, sp = (ROAD * 2 - 30) / (cols - 1);
   for (var i = 0; i < count; i++) {
     var c = i % cols, row = Math.floor(i / cols), t = rnd() < 0.7 ? main : pick(pool);
     addEnemy(t, -ROAD + 15 + c * sp + rr(-7, 7) + (row % 2) * sp * 0.5, SPAWN + row * 30 + rr(0, 10), p);
@@ -498,7 +505,7 @@ function killEnemy(e, byShot) {
   e.hp = 0; e.dead = true;
   if (byShot) {
     G.score += Math.round(e.sc * (1 + G.stage * 0.2)); G.kills++; G.stageKills++;
-    if (G.n > 0 && G.clearT <= 0) { G.rec += e.T.big ? 6 : 1; while (G.rec >= 6) { G.rec -= 6; G.n++; G.recShow++; } }   // 倒すと 降参兵が仲間に
+    if (G.n > 0 && G.clearT <= 0) { var per = s5rec(); G.rec += e.T.big ? per : 1; while (G.rec >= per) { G.rec -= per; G.n++; G.recShow++; } }   // 倒すと 降参兵が仲間に
   }
   var big = e.T.big || e.type === 'kiba';
   if (G.fx.length < 420) {
@@ -676,7 +683,7 @@ function updGates(dt) {
 }
 /* ---- 加勢の兵(道ばたで待っている味方。その列を通ると合流) ---- */
 function spawnAllies(e) {
-  var s = G.stage, n = Math.max(10, nice(expN(s, e.p) * rr(0.6, 0.9)));
+  var s = G.stage, n = Math.max(10, nice(expN(s, e.p) * rr(0.6, 0.9) * GK(s)));
   G.allies.push({ z: SPAWN, lane: Math.floor(rnd() * 3), n: n, taken: false, fade: 1 });
 }
 function updAllies(dt) {
