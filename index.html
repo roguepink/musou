@@ -58,6 +58,16 @@
   #ctl button { min-width: 0; width: 40px; height: 34px; padding: 0; font-size: 17px; border-radius: 8px; border: 1.5px solid rgba(255,211,77,.6);
     background: rgba(20,6,4,.7); color: #fff; cursor: pointer; }
   #bestLine { font-size: 12px; color: #d9c8b0; }
+  #overRank b { font-family: 'Yuji', serif; font-weight: 400; font-size: 1.6em; color: #ffd34d; }
+  .rk { list-style: none; margin: 0; padding: 0; width: min(330px, 92vw); max-height: 62vh; overflow-y: auto; text-align: left; }
+  .rk li { display: flex; align-items: center; gap: 10px; padding: 7px 10px; margin: 0 0 5px; border-radius: 8px; background: rgba(10,4,2,.65); border: 1px solid rgba(255,211,77,.18); }
+  .rk li.me { border-color: #ffd34d; background: rgba(90,40,6,.7); box-shadow: 0 0 12px rgba(255,200,60,.35); }
+  .rk-n { width: 28px; text-align: center; font-family: 'Dela', sans-serif; font-size: 18px; color: #ffd34d; }
+  .rk li:nth-child(1) .rk-n { font-size: 24px; color: #ffe066; } .rk li:nth-child(2) .rk-n { color: #e0e6f0; } .rk li:nth-child(3) .rk-n { color: #e8a060; }
+  .rk-s { min-width: 82px; font-family: 'Dela', sans-serif; font-size: 18px; }
+  .rk-d { font-size: 11px; line-height: 1.45; color: #d9c8b0; }
+  .rk-none { color: #d9c8b0; }
+  #ranks { background: rgba(6,2,2,.93); }
 </style>
 </head>
 <body>
@@ -77,13 +87,22 @@
   <button id="btnPlay" type="button">出陣</button>
   <button id="btnFirst" class="sub hidden" type="button">第一陣から</button>
   <p id="bestLine"></p>
+  <button id="btnRanks" class="sub hidden" type="button">記録(上位10回)</button>
 </div>
 
 <div id="over" class="overlay hidden">
   <h2 id="overText">討死</h2>
+  <p id="overRank"></p>
   <p id="overScore"></p>
   <button id="btnRetry" type="button">もう一度 挑む</button>
+  <button id="btnRanks2" class="sub" type="button">記録(上位10回)を見る</button>
   <button id="btnTitle" class="sub" type="button">タイトルへ</button>
+</div>
+
+<div id="ranks" class="overlay hidden">
+  <h2>記録</h2>
+  <div id="rankList"></div>
+  <button id="btnRanksBack" class="sub" type="button">もどる</button>
 </div>
 
 <div id="clear" class="overlay hidden">

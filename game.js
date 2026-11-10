@@ -18,6 +18,7 @@ var MAXSHOW = 150, MAX_SHOOT = 16;
 /* ---------------- 保存 ---------------- */
 var SAVE = { stage: 1, best: 0, bestStage: 0, mute: false };
 try { var sv = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (sv) for (var k0 in sv) SAVE[k0] = sv[k0]; } catch (e) {}
+if (!SAVE.ranks) SAVE.ranks = SAVE.best ? [{ s: SAVE.best, st: SAVE.bestStage || 1, k: 0, m: 0, d: '' }] : [];   // 記録(上位10回)
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); } catch (e) {} }
 
 /* ---------------- 小さな道具 ---------------- */
@@ -190,6 +191,7 @@ function startStage(s) {
   G.stage = s; G.theme = (s - 1) % THEMES.length; skyFor = -1;
   G.n = n0(s); G.nShow = G.n; G.maxN = G.n; G.sx = G.tx = 0; G.dist = 0; G.main = 'yumi'; G.mainLv = 1; G.spec = {}; G.specT = {}; G.power = 1; G.fireT = 0;
   G.bullets = []; G.enemies = []; G.gates = []; G.props = []; G.fx = []; G.texts = []; G.ebul = []; G.warns = []; G.fumas = []; G.waves = []; G.queue = []; G.amb = [];
+  G.startScore = G.score; G.startKills = G.kills;     // やり直したときは ここから続く
   G.boss = null; G.clearT = 0; G.overT = 0; G.shake = 0; G.flash = 0; G.slow = 0; G.stageKills = 0; G.milestone = 0; G.danger = 0; G.rushT = 0;
   G.dmgAcc = 0; G.dpsAvg = expDPS(s, 0); G.dpsT = 0; G.lossE = 0; G.lossB = 0; G.allies = []; G.rec = 0; G.recShow = 0; G.recT = 0; G.gainJ = 0; G.gainR = 0;
   buildStage(s);
@@ -386,6 +388,7 @@ function update(dt) {
   if (G.nFlash > 0) G.nFlash -= dt;
   if (G.banner) { G.banner.t -= dt; if (G.banner.t <= 0) G.banner = null; }
   if (G.n > G.maxN) G.maxN = G.n;
+  if (G.n > (G.runMax || 0)) G.runMax = G.n;
   var dangerNow = G.n > 0 && G.clearT <= 0 && (G.n < Math.max(8, G.maxN * 0.28) || (G.boss && G.boss.phase === 'crush'));
   G.danger += ((dangerNow ? 1 : 0) - G.danger) * Math.min(1, dt * 3);
   if (window.SND) SND.heart(dangerNow && G.state === 'play');
@@ -1520,10 +1523,10 @@ function draw() {
 
 /* ---------------- 画面の切りかえ ---------------- */
 var $ = function (id) { return document.getElementById(id); };
-function hideAll() { ['title', 'over', 'clear', 'pause'].forEach(function (id) { $(id).classList.add('hidden'); }); }
+function hideAll() { ['title', 'over', 'clear', 'pause', 'ranks'].forEach(function (id) { $(id).classList.add('hidden'); }); }
 function startRun(stage, ev) {
   if (window.SND) { SND.start(); SND.setMute(SAVE.mute); SND.quiet(G.auto); }
-  G.score = 0; G.kills = 0;
+  G.score = 0; G.kills = 0; G.recorded = false; G.runMax = 0; G.runFrom = stage; G.runEntry = null;
   startStage(stage);
   G.state = 'play'; G.paused = false; hideAll();
   $('ctl').classList.remove('hidden');
@@ -1533,13 +1536,42 @@ function startRun(stage, ev) {
   } catch (e) {}
 }
 function nextStage() { if (window.SND) SND.start(); var sc = G.score, k = G.kills; startStage(G.stage + 1); G.score = sc; G.kills = k; G.state = 'play'; hideAll(); $('ctl').classList.remove('hidden'); }
-function showOver() {
-  G.state = 'over'; $('ctl').classList.add('hidden'); setMusic('off'); if (window.SND) SND.heart(false);
+function record(clearedStage) {      // 1回の出陣の記録を 上位10回に入れる。入った順位を返す(入らなければ 0)
+  if (G.score <= 0 || G.auto) return 0;
+  var now = new Date(), e = G.runEntry;     // やり直して続けた出陣は 同じ記録を 書きかえる
+  if (!e) { e = G.runEntry = { s: 0 }; SAVE.ranks.push(e); }
+  if (G.score >= e.s) { e.s = G.score; e.st = Math.max(e.st || 0, clearedStage); e.from = G.runFrom || 1; e.k = G.kills; e.m = Math.max(e.m || 0, G.runMax || G.maxN); e.d = (now.getMonth() + 1) + '/' + now.getDate(); }
+  if (SAVE.ranks.indexOf(e) < 0) SAVE.ranks.push(e);
+  SAVE.ranks.sort(function (a, b) { return b.s - a.s; });
+  SAVE.ranks = SAVE.ranks.slice(0, 10);
   if (G.score > SAVE.best) SAVE.best = G.score;
   save();
+  var i = SAVE.ranks.indexOf(e); return i >= 0 ? i + 1 : 0;
+}
+function renderRanks(hi) {
+  var r = SAVE.ranks, h = '';
+  if (!r.length) h = '<p class="rk-none">まだ記録がありません。<br>出陣して 記録を残そう!</p>';
+  else {
+    h = '<ol class="rk">';
+    for (var i = 0; i < r.length; i++) {
+      var e = r[i];
+      h += '<li class="' + (i + 1 === hi ? 'me' : '') + '"><span class="rk-n">' + (i + 1) + '</span><span class="rk-s">' + e.s + '</span>' +
+        '<span class="rk-d">' + (e.st ? '第' + kan(e.st) + '陣まで突破' : '第' + kan(e.from || 1) + '陣で討死') + (e.k ? '<br>撃破 ' + e.k + ' ・ 最大 ' + fmt(e.m) + '人' : '') + (e.d ? ' ・ ' + e.d : '') + '</span></li>';
+    }
+    h += '</ol>';
+  }
+  $('rankList').innerHTML = h;
+}
+var rankBack = 'title';
+function showRanks(from, hi) { rankBack = from; renderRanks(hi || 0); hideAll(); $('ranks').classList.remove('hidden'); }
+function showOver() {
+  G.state = 'over'; $('ctl').classList.add('hidden'); setMusic('off'); if (window.SND) SND.heart(false);
+  var rank = record(G.stage - 1);
+  G.lastRank = rank;
+  $('overRank').innerHTML = rank ? '今回の記録は <b>第' + rank + '位</b>!' : '';
   $('overText').textContent = '第' + kan(G.stage) + '陣にて 討死';
-  $('overScore').innerHTML = '撃破 <b>' + G.stageKills + '</b> 人 ・ 最大の軍勢 <b>' + fmt(G.maxN) + '</b> 人<br>点数 <b>' + G.score + '</b>(最高 ' + SAVE.best + ')';
-  $('btnRetry').textContent = 'もう一度 挑む';
+  $('overScore').innerHTML = '撃破 <b>' + G.kills + '</b> 人 ・ 最大の軍勢 <b>' + fmt(G.runMax || G.maxN) + '</b> 人<br>点数 <b>' + G.score + '</b>(最高 ' + SAVE.best + ')';
+  $('btnRetry').textContent = 'もう一度 挑む(点数は続く)';
   $('over').classList.remove('hidden');
 }
 function showClear() {
@@ -1552,11 +1584,13 @@ function showClear() {
   $('clear').classList.remove('hidden');
 }
 function showTitle() {
+  if (G.state === 'clear' || G.state === 'play' || G.state === 'over') record(G.state === 'clear' ? G.stage : G.stage - 1);
   G.state = 'title'; hideAll(); $('ctl').classList.add('hidden'); $('title').classList.remove('hidden'); setMusic('off');
   G.theme = (SAVE.stage - 1) % THEMES.length; G.amb = []; skyFor = -1; G.nShow = 60;
   $('btnPlay').textContent = SAVE.stage > 1 ? '出陣(第' + kan(SAVE.stage) + '陣)' : '出陣';
   $('btnFirst').classList.toggle('hidden', SAVE.stage <= 1);
   $('bestLine').textContent = SAVE.best ? '最高点 ' + SAVE.best + ' ・ 第' + kan(SAVE.bestStage) + '陣まで突破' : '';
+  $('btnRanks').classList.toggle('hidden', !SAVE.ranks.length);
 }
 function setPause(on) {
   if (G.state !== 'play') return;
@@ -1571,8 +1605,15 @@ function toggleMute() {
 function btn(id, fn) { $(id).addEventListener('click', function (ev) { this.blur(); fn(ev); }); }
 btn('btnPlay', function (ev) { startRun(SAVE.stage, ev); });
 btn('btnFirst', function (ev) { startRun(1, ev); });
-btn('btnRetry', function (ev) { startRun(G.stage, ev); });
+btn('btnRetry', function (ev) {      // その陣を始めたときの点数から 続ける
+  if (window.SND) { SND.start(); SND.setMute(SAVE.mute); }
+  var sc = G.startScore || 0, k = G.startKills || 0; G.score = sc; G.kills = k; startStage(G.stage);
+  G.state = 'play'; G.paused = false; hideAll(); $('ctl').classList.remove('hidden');
+});
 btn('btnTitle', showTitle);
+btn('btnRanks', function () { showRanks('title'); });
+btn('btnRanks2', function () { showRanks('over', G.lastRank); });
+btn('btnRanksBack', function () { hideAll(); $(rankBack === 'over' ? 'over' : 'title').classList.remove('hidden'); });
 btn('btnTitle2', showTitle);
 btn('btnNext', nextStage);
 btn('btnPause', function () { setPause(true); });
