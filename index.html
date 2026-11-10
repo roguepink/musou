@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1a0d0d">
+<title>侍無双</title>
+<meta name="description" content="門をくぐって仲間を増やせ!侍と忍者の大軍で、鬼も大将もなぎ倒す。">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="侍無双">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta property="og:type" content="website">
+<meta property="og:title" content="侍無双">
+<meta property="og:description" content="門をくぐって仲間を増やせ!侍と忍者の大軍で、鬼も大将もなぎ倒す。">
+<meta property="og:image" content="https://roguepink.github.io/musou/ogp.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #120a0a; color: #fff;
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", "Noto Sans JP", system-ui, sans-serif;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; }
+  #safe { position: fixed; left: 0; top: 0; width: 0; height: 0; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); visibility: hidden; pointer-events: none; }
+  .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; text-align: center; padding: calc(env(safe-area-inset-top) + 16px) 22px calc(env(safe-area-inset-bottom) + 16px);
+    background: radial-gradient(ellipse at 50% 40%, rgba(40,14,10,.55), rgba(10,5,4,.88)); z-index: 5; overflow-y: auto; }
+  .overlay.hidden, .hidden { display: none !important; }
+  h1 { margin: 0; font-size: clamp(46px, 15vw, 72px); font-weight: 900; line-height: 1.1; letter-spacing: .06em;
+    color: #fff4dc; text-shadow: 0 4px 0 #8a1a10, 0 0 24px rgba(255,90,40,.5); }
+  h1 small { display: block; font-size: .28em; letter-spacing: .1em; color: #ffd34d; text-shadow: 0 2px 0 #3a1408; margin-top: 8px; }
+  h2 { margin: 0; font-size: clamp(30px, 9vw, 44px); font-weight: 900; color: #ffd34d; text-shadow: 0 3px 0 #6a1408; }
+  p { margin: 0; line-height: 1.7; }
+  p b { color: #ffd34d; font-size: 1.15em; }
+  .rules { font-size: 15px; line-height: 1.75; background: rgba(255,240,220,.08); border: 1px solid rgba(255,211,77,.3); border-radius: 14px;
+    padding: 10px 14px; text-align: left; max-width: 340px; }
+  .rules b { color: #ffd34d; }
+  .rules .blue { color: #7fd8ff; } .rules .red { color: #ff7b6b; }
+  button { font: inherit; font-weight: 900; font-size: 22px; padding: 14px 40px; border: 3px solid #3a1408; border-radius: 14px;
+    background: linear-gradient(#ffdf6a, #f0a830); color: #3a1408; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 5px 0 #8a4a10; min-width: 220px; }
+  button:active { transform: translateY(3px); box-shadow: 0 2px 0 #8a4a10; }
+  button.sub { font-size: 16px; padding: 10px 24px; background: rgba(255,255,255,.12); color: #fff; border-color: rgba(255,255,255,.35); box-shadow: none; min-width: 0; }
+  #ctl { position: fixed; top: calc(env(safe-area-inset-top) + 6px); right: 8px; display: flex; gap: 6px; z-index: 4; }
+  #ctl button { min-width: 0; width: 40px; height: 34px; padding: 0; font-size: 17px; border-radius: 10px; border: 2px solid rgba(255,255,255,.35);
+    background: rgba(20,10,8,.55); color: #fff; box-shadow: none; }
+  #bestLine { font-size: 13px; color: #d9c8b0; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="safe"></div>
+<div id="ctl" class="hidden"><button id="btnMute" type="button" aria-label="音">🔊</button><button id="btnPause" type="button" aria-label="一時停止">⏸</button></div>
+
+<div id="title" class="overlay">
+  <h1>侍無双<small>〜 門をくぐって 大軍勢 〜</small></h1>
+  <div class="rules">
+    <b>指で左右に動かすだけ。</b>仲間は自動で撃つ。<br>
+    <span class="blue">青い門</span>で仲間が増える。<span class="red">赤い門</span>は減る。<br>
+    <b>門を撃つと数字が上がる!</b>赤も青に変えられる。<br>
+    <b>木箱</b>を壊すと 武器・援軍・攻撃力アップ。<br>
+    最後に出てくる<b>大将</b>を倒せば 突破。赤い丸はよけろ!
+  </div>
+  <button id="btnPlay" type="button">出陣!</button>
+  <button id="btnFirst" class="sub hidden" type="button">第1陣から</button>
+  <p id="bestLine"></p>
+</div>
+
+<div id="over" class="overlay hidden">
+  <h2 id="overText">討死…</h2>
+  <p id="overScore"></p>
+  <button id="btnRetry" type="button">もう一度</button>
+  <button id="btnTitle" class="sub" type="button">タイトルへ</button>
+</div>
+
+<div id="clear" class="overlay hidden">
+  <h2 id="clearText">突破!</h2>
+  <p id="clearScore"></p>
+  <button id="btnNext" type="button">次の陣へ ▶</button>
+  <button id="btnTitle2" class="sub" type="button">タイトルへ</button>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <h2>ひと休み</h2>
+  <button id="btnResume" type="button">つづける</button>
+  <button id="btnQuit" class="sub" type="button">タイトルへ</button>
+</div>
+
+<script src="game.js"></script>
+<script>
+// LINE の中で開いたときだけ、1回だけ案内する(LINE の中は画面が小さく、ホーム画面にも入れられない)
+(function () {
+  var seenKey = 'musou-line-tip', seen = false;
+  try { seen = localStorage.getItem(seenKey) === '1'; } catch (e) {}
+  var standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  if (!/\bLine\//i.test(navigator.userAgent) || standalone || seen) return;
+  var bar = document.createElement('div');
+  bar.style.cssText = 'position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:99999;background:#fffaf0;color:#1b1430;border:3px solid #1b1430;border-radius:14px;padding:10px 40px 10px 12px;font:700 13px/1.5 system-ui,sans-serif';
+  bar.textContent = 'LINEの中だと画面が小さめです。右下の「…」(または右上の︙)から「ブラウザで開く」を選ぶと、大きく遊べて、ホーム画面にも入れられます。';
+  var x = document.createElement('button'); x.type = 'button'; x.setAttribute('aria-label', 'とじる'); x.textContent = '×';
+  x.style.cssText = 'position:absolute;top:4px;right:6px;width:32px;height:32px;min-width:0;padding:0;border:0;box-shadow:none;background:none;font:900 20px/1 system-ui;color:#1b1430;cursor:pointer';
+  x.addEventListener('click', function () { try { localStorage.setItem(seenKey, '1'); } catch (e) {} bar.remove(); });
+  bar.appendChild(x); addEventListener('load', function () { document.body.appendChild(bar); });
+})();
+// ホーム画面に入れられる(アプリのように開く)ための登録。file:// や 登録できない所では 何もしない
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+}
+</script>
+<script>
+  // はじめの画面(Google Play 風: インストール / このまま遊ぶ)。install.js が出す。ホーム画面から開いたときは出ない
+  window.INSTALL_GATE = { id: 'musou', name: '侍無双', icon: 'icon-192.png', color: '#c8382c',
+    tagline: '門をくぐって 仲間が増える 合戦アクション',
+    desc: '指で左右に動かすだけ。青い門をくぐると仲間が増え、赤い門だと減る。門を撃てば数字が上がる!侍と忍者の大軍で、鬼・天狗・がしゃどくろ、そして大将をなぎ倒せ。',
+    points: ['門をくぐるたびに 仲間がどんどん増える', '弓矢・手裏剣・火縄銃・焙烙玉など 武器は6種類', '桜街道・竹林・夜の城下町… 大将は10体'],
+    shots: [], badges: ['無料', '広告なし', '登録なし', 'スマホは縦向き'], playLabel: '▶ このまま遊ぶ' };
+</script>
+<script src="install.js"></script>
+</body>
+</html>
